@@ -1,6 +1,5 @@
 <?php
 /*
- * @version $Id: $
  -------------------------------------------------------------------------
  LICENSE
 
@@ -21,7 +20,7 @@
 
  @package   geststock
  @author    Nelly Mahu-Lasson
- @copyright Copyright (c) 2017 GestStock plugin team
+ @copyright Copyright (c) 2017-2018 GestStock plugin team
  @license   AGPL License 3.0 or (at your option) any later version
             http://www.gnu.org/licenses/agpl-3.0-standalone.html
  @link
@@ -103,6 +102,12 @@ function plugin_geststock_uninstall() {
 
    if (is_dir(GLPI_PLUGIN_DOC_DIR.'/geststock')) {
       Toolbox::deleteDir(GLPI_PLUGIN_DOC_DIR.'/geststock');
+   }
+
+   $itemtypes = ['DisplayPreference', 'Bookmark', 'Log', 'Notepad'];
+   foreach ($itemtypes as $itemtype) {
+      $item = new $itemtype;
+      $item->deleteByCriteria(array('itemtype' => 'PluginGeststockReservation'));
    }
 
    return true;
@@ -197,7 +202,6 @@ function plugin_geststock_giveItem($type, $ID, $data, $num) {
 }
 
 
-
 function plugin_geststock_postinit() {
    global $PLUGIN_HOOKS;
 
@@ -207,9 +211,10 @@ function plugin_geststock_postinit() {
       if (class_exists('PluginSimcardSimcard')) {
          $mod = 'PluginSimcardSimcardType';
       }
-      Plugin::registerClass('PluginGeststockSpecification', array('addtabon' => $mod));
+      Plugin::registerClass('PluginGeststockSpecification', ['addtabon' => $mod]);
    }
 }
+
 
 function plugin_geststock_getAddSearchOptions($itemtype) {
    global $CFG_GLPI;
@@ -251,4 +256,23 @@ function plugin_geststock_getAddSearchOptions($itemtype) {
                  'datatype'   => 'decimal'];
     }
     return $tab;
+}
+
+
+function plugin_geststock_addWhere($link, $nott, $type, $id, $val) {
+
+   $searchopt = &Search::getOptions($type);
+   $table = $searchopt[$id]["table"];
+   $field = $searchopt[$id]["field"];
+
+   switch ($type) {
+      case 'PluginGeststockReservation' :
+         if ($table == 'glpi_plugin_geststock_reservations_items') {
+            if ($field == 'locations_id_stock') {
+               return $link." `$table`.`$field` = $val";
+            }
+         }
+         break;
+   }
+   return "";
 }
